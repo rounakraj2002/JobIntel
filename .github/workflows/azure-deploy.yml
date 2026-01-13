@@ -21,26 +21,26 @@ jobs:
           node-version: '22.x'
           cache: 'npm'
 
-      - name: Install dependencies (Backend)
-        run: |
-          cd backend
-          npm ci
+      - name: Install dependencies (Root - for workspaces)
+        run: npm ci
 
-      - name: Build (Backend)
+      - name: Build (Backend workspace)
         run: |
-          cd backend
-          npm run build
-          if [ ! -d "dist" ]; then
-            echo "Build failed: dist folder not created"
+          npm run build -w backend
+          if [ ! -d "backend/dist" ]; then
+            echo "Build failed: backend/dist folder not created"
             exit 1
           fi
-          echo "Build successful, dist folder exists"
+          echo "Build successful, backend/dist folder exists"
 
       - name: Upload artifact for deployment job
         uses: actions/upload-artifact@v4
         with:
-          name: node-app
-          path: backend/
+          name: backend-build
+          path: |
+            backend/dist/
+            backend/package.json
+            package-lock.json
 
   deploy:
     runs-on: ubuntu-latest
@@ -53,11 +53,15 @@ jobs:
       - name: Download artifact from build job
         uses: actions/download-artifact@v4
         with:
-          name: node-app
+          name: backend-build
+
+      - name: Set up Node.js version
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22.x'
 
       - name: Install production dependencies
-        run: |
-          npm ci --omit=dev
+        run: npm ci --omit=dev
 
       - name: Deploy to Azure Web App
         id: deploy-to-webapp
@@ -65,5 +69,5 @@ jobs:
         with:
           app-name: 'backend-jobIntel'
           publish-profile: ${{ secrets.AZURE_PUBLISH_PROFILE }}
-          package: .
+          package: backend
           slot-name: production
