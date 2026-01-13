@@ -76,7 +76,11 @@ export default function AdminNotifications() {
 
   const [stats, setStats] = useState<any | null>(null);
   const [notifications, setNotifications] = useState<any[]>([]);
+  const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [recipientMode, setRecipientMode] = useState<'audience'|'all'|'applicants_one'|'applicants_many'>('audience');
+  const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
+  const [selectedJobIds, setSelectedJobIds] = useState<string[]>([]);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -87,13 +91,15 @@ export default function AdminNotifications() {
         const headers: Record<string, string> = { 'Content-Type': 'application/json' };
         if (token) headers.Authorization = `Bearer ${token}`;
 
-        const [sres, nres] = await Promise.all([
+        const [sres, nres, jres] = await Promise.all([
           fetch('/api/admin/stats', { headers }),
           fetch('/api/admin/notifications', { headers }),
+          fetch('/api/jobs', { headers }),
         ]);
 
         if (sres.ok) setStats(await sres.json());
         if (nres.ok) setNotifications(await nres.json());
+        if (jres.ok) setJobs(await jres.json());
       } catch (err) {
         console.error('Failed to load notifications data', err);
         toast({ title: 'Failed to load notifications', variant: 'destructive' });
@@ -119,14 +125,28 @@ export default function AdminNotifications() {
     }
 
     try {
-      for (const ch of channels) {
-        const resp = await fetch('/api/notifications/send', {
-          method: 'POST',
-          headers,
-          body: JSON.stringify({ channel: ch, title: formData.title, message: formData.message, targetAudience: formData.targetAudience }),
-        });
-        if (!resp.ok) throw new Error(await resp.text());
+      // build base payload
+      const base: any = { title: formData.title, message: formData.message, preferredChannels: channels };
+
+      if (recipientMode === 'audience') {
+        base.targetAudience = formData.targetAudience;
+      } else if (recipientMode === 'all') {
+        base.targetAudience = 'all';
+      } else if (recipientMode === 'applicants_one') {
+        if (!selectedJobId) { toast({ title: 'Select a job', variant: 'destructive' }); return; }
+        base.jobId = selectedJobId;
+      } else if (recipientMode === 'applicants_many') {
+        if (!selectedJobIds || selectedJobIds.length === 0) { toast({ title: 'Select one or more jobs', variant: 'destructive' }); return; }
+        base.jobIds = selectedJobIds;
       }
+
+      const resp = await fetch('/api/notifications/send', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify(base),
+      });
+
+      if (!resp.ok) throw new Error(await resp.text());
 
       toast({ title: 'Notification enqueued' });
       // refresh stats and notifications
@@ -139,6 +159,9 @@ export default function AdminNotifications() {
 
       setIsCreateOpen(false);
       setFormData({ title: '', message: '', channels: { email: true, whatsapp: false, telegram: false }, targetAudience: 'all' });
+      setSelectedJobId(null);
+      setSelectedJobIds([]);
+      setRecipientMode('audience');
     } catch (err: any) {
       console.error('Send failed', err);
       toast({ title: 'Send failed', description: String(err), variant: 'destructive' });
@@ -193,6 +216,63 @@ export default function AdminNotifications() {
                   className="min-h-[120px]"
                 />
               </div>
+              {/* Recipients selection */}
+              <div className="space-y-2">
+                <Label>Recipients</Label>
+                <div className="flex flex-col gap-2">
+                  <label className="flex items-center gap-2">
+                    <input type="radio" name="recipients" checked={recipientMode === 'audience'} onChange={() => setRecipientMode('audience')} />
+                    <span className="ml-2">Target audience (all/free/premium/ultra)</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input type="radio" name="recipients" checked={recipientMode === 'all'} onChange={() => setRecipientMode('all')} />
+                    <span className="ml-2">All users</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input type="radio" name="recipients" checked={recipientMode === 'applicants_one'} onChange={() => setRecipientMode('applicants_one')} />
+                    <span className="ml-2">Applicants for one job</span>
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input type="radio" name="recipients" checked={recipientMode === 'applicants_many'} onChange={() => setRecipientMode('applicants_many')} />
+                    <span className="ml-2">Applicants for multiple jobs</span>
+                  </label>
+                </div>
+
+                {recipientMode === 'applicants_one' && (
+                  <div className="mt-2">
+                    <Label>Select job</Label>
+                    <Select value={selectedJobId ?? ""} onValueChange={(v) => setSelectedJobId(v || null)}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select job" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {jobs.map((j) => (
+                          <SelectItem key={j._id} value={j._id}>{j.title}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+
+                {recipientMode === 'applicants_many' && (
+                  <div className="mt-2 space-y-2">
+                    <Label>Select multiple jobs</Label>
+                    <div className="max-h-40 overflow-auto border rounded p-2">
+                      {jobs.map((j) => (
+                        <label key={j._id} className="flex items-center gap-2 mb-1">
+                          <input type="checkbox" checked={selectedJobIds.includes(j._id)} onChange={(e) => {
+                            if (e.target.checked) setSelectedJobIds([...selectedJobIds, j._id]);
+                            else setSelectedJobIds(selectedJobIds.filter(x => x !== j._id));
+                          }} />
+                          <span className="ml-2">{j.title}</span>
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Channels */}
               <div className="space-y-2">
                 <Label>Channels</Label>
                 <div className="flex gap-4">
