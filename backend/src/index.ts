@@ -24,8 +24,43 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-app.get("/api/health", (_req, res) => {
-  res.json({ status: "ok", service: "jobscout-backend" });
+app.get("/api/health", async (_req, res) => {
+  // Basic healthy probe
+  const ok: any = { service: "jobscout-backend", status: "ok" };
+
+  // Check MongoDB connection state (0 = disconnected, 1 = connected)
+  try {
+    // lazy require to avoid unnecessary import order issues
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const mongoose = require('mongoose');
+    const ready = mongoose.connection && mongoose.connection.readyState === 1;
+    ok.mongo = ready ? 'connected' : 'disconnected';
+    if (!ready) ok.status = 'degraded';
+  } catch (e) {
+    ok.mongo = 'unknown';
+    ok.status = 'degraded';
+  }
+
+  // Check Redis if configured
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Redis = require('ioredis');
+    const client = new Redis(process.env.REDIS_URL || undefined);
+    // attempt a ping with timeout
+    const ping = await Promise.race([
+      client.ping(),
+      new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 1000)),
+    ]);
+    ok.redis = ping === 'PONG' ? 'connected' : 'unknown';
+    await client.disconnect();
+  } catch (e) {
+    // If no REDIS_URL set, that's acceptable — mark as optional
+    ok.redis = process.env.REDIS_URL ? 'disconnected' : 'not-configured';
+    if (ok.redis === 'disconnected') ok.status = 'degraded';
+  }
+
+  const statusCode = ok.status === 'ok' ? 200 : 503;
+  return res.status(statusCode).json(ok);
 });
 
 app.use("/api/auth", authRoutes);

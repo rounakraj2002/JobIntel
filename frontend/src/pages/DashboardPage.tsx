@@ -371,6 +371,30 @@ const DashboardPage = () => {
                     <Label>Batch</Label>
                     <Input value={profileForm.batch} onChange={(e: any) => setProfileForm((p: any) => ({ ...p, batch: e.target.value }))} />
                   </div>
+
+                  {/* Render admin-defined profile fields */}
+                  {(profileFields || []).map((f: any) => (
+                    <div key={f.key}>
+                      <Label>{f.label}</Label>
+                      {f.type === 'select' ? (
+                        <select
+                          className="w-full p-2 border rounded"
+                          value={profileForm[f.key] ?? ''}
+                          onChange={(e: any) => setProfileForm((p: any) => ({ ...p, [f.key]: e.target.value }))}
+                        >
+                          <option value="">Select…</option>
+                          {(f.options || []).map((opt: string) => (
+                            <option key={opt} value={opt}>{opt}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <Input
+                          value={profileForm[f.key] ?? ''}
+                          onChange={(e: any) => setProfileForm((p: any) => ({ ...p, [f.key]: e.target.value }))}
+                        />
+                      )}
+                    </div>
+                  ))}
                 </div>
                 <DialogFooter>
                   <Button variant="outline" onClick={() => setEditProfileOpen(false)}>Cancel</Button>
