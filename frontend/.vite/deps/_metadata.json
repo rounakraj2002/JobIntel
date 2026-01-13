@@ -1,0 +1,73 @@
+{
+  "hash": "aaf13896",
+  "configHash": "8a8926f5",
+  "lockfileHash": "a2cbfa10",
+  "browserHash": "db38190a",
+  "optimized": {
+    "react/jsx-dev-runtime": {
+      "src": "../../node_modules/react/jsx-dev-runtime.js",
+      "file": "react_jsx-dev-runtime.js",
+      "fileHash": "22ec6255",
+      "needsInterop": true
+    },
+    "react-dom/client": {
+      "src": "../../node_modules/react-dom/client.js",
+      "file": "react-dom_client.js",
+      "fileHash": "50280c61",
+      "needsInterop": true
+    },
+    "react": {
+      "src": "../../node_modules/react/index.js",
+      "file": "react.js",
+      "fileHash": "5f880bef",
+      "needsInterop": true
+    },
+    "@tanstack/react-query": {
+      "src": "../../node_modules/@tanstack/react-query/build/modern/index.js",
+      "file": "@tanstack_react-query.js",
+      "fileHash": "cf54bb1a",
+      "needsInterop": false
+    },
+    "react-router-dom": {
+      "src": "../../node_modules/react-router-dom/dist/index.js",
+      "file": "react-router-dom.js",
+      "fileHash": "21a346e5",
+      "needsInterop": false
+    },
+    "zustand": {
+      "src": "../../node_modules/zustand/esm/index.mjs",
+      "file": "zustand.js",
+      "fileHash": "3d182ca8",
+      "needsInterop": false
+    },
+    "zustand/middleware": {
+      "src": "../../node_modules/zustand/esm/middleware.mjs",
+      "file": "zustand_middleware.js",
+      "fileHash": "6aef5db9",
+      "needsInterop": false
+    },
+    "lucide-react": {
+      "src": "../../node_modules/lucide-react/dist/esm/lucide-react.js",
+      "file": "lucide-react.js",
+      "fileHash": "4157b195",
+      "needsInterop": false
+    },
+    "recharts": {
+      "src": "../../node_modules/recharts/es6/index.js",
+      "file": "recharts.js",
+      "fileHash": "0b25cf6f",
+      "needsInterop": false
+    }
+  },
+  "chunks": {
+    "chunk-I2MCD6RR": {
+      "file": "chunk-I2MCD6RR.js"
+    },
+    "chunk-E55NSNTN": {
+      "file": "chunk-E55NSNTN.js"
+    },
+    "chunk-4MBMRILA": {
+      "file": "chunk-4MBMRILA.js"
+    }
+  }
+}

@@ -25,6 +25,17 @@ export async function getAdminStats(_req: Request, res: Response) {
 
     const notificationsSent = await NotificationLog.countDocuments();
 
+    // compute delivery stats
+    const emailTotal = await NotificationLog.countDocuments({ channel: 'email' });
+    const emailSent = await NotificationLog.countDocuments({ channel: 'email', status: 'sent' });
+    const emailDelivery = emailTotal ? Number(((emailSent / emailTotal) * 100).toFixed(1)) : 0;
+
+    const whatsappTotal = await NotificationLog.countDocuments({ channel: 'whatsapp' });
+    const whatsappSent = await NotificationLog.countDocuments({ channel: 'whatsapp', status: 'sent' });
+    const whatsappDelivery = whatsappTotal ? Number(((whatsappSent / whatsappTotal) * 100).toFixed(1)) : 0;
+
+    const scheduledCount = await NotificationLog.countDocuments({ status: 'scheduled' });
+
     res.json({
       totalJobs,
       activeJobs,
@@ -32,6 +43,9 @@ export async function getAdminStats(_req: Request, res: Response) {
       totalApplications: totalApplications[0]?.total || 0,
       applicationsToday,
       notificationsSent,
+      emailDelivery,
+      whatsappDelivery,
+      scheduledCount,
       timestamp: new Date().toISOString(),
     });
   } catch (err) {
