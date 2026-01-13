@@ -16,7 +16,7 @@ export async function sendNotification(req: Request, res: Response) {
 
     if (jobIds.length > 0) {
       // find applications for these jobs and collect distinct userIds
-      const objectIds = jobIds.map((j) => mongoose.Types.ObjectId(j));
+      const objectIds = jobIds.map((j) => new mongoose.Types.ObjectId(j));
       const apps = await Application.find({ jobId: { $in: objectIds } }).select('userId jobId').lean();
       const userIdSet = new Set<string>();
       for (const a of apps) {
@@ -79,7 +79,7 @@ export async function previewNotification(req: Request, res: Response) {
     if (Array.isArray(payload.jobIds)) jobIds.push(...payload.jobIds);
 
     if (jobIds.length > 0) {
-      const objectIds = jobIds.map((j) => mongoose.Types.ObjectId(j));
+      const objectIds = jobIds.map((j) => new mongoose.Types.ObjectId(j));
       const apps = await Application.find({ jobId: { $in: objectIds } }).select('userId jobId').lean();
       const userIds = Array.from(new Set(apps.map((a) => a.userId && (a.userId as any).toString()).filter(Boolean)));
       result.recipients = userIds.length;

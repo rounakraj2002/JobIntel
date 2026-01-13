@@ -18,6 +18,9 @@ export interface IJob extends mongoose.Document {
   parsedAt?: Date;
   status: string;
   meta?: any;
+  createdAt?: Date;
+  postedAt?: Date;
+  updatedAt?: Date;
 }
 
 const JobSchema = new Schema<IJob>(
