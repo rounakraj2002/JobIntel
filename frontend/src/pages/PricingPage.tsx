@@ -119,29 +119,7 @@ const PricingPage = () => {
       ],
       highlight: true,
     },
-    {
-      name: 'Ultra Premium',
-      price: '₹1,499',
-      period: 'per month',
-      description: 'Maximum automation & priority',
-      badge: { text: 'Best Value', variant: 'ultra' as const },
-      buttonVariant: 'ultra' as const,
-      buttonText: 'Go Ultra',
-      features: [
-        { text: 'Everything in Premium', included: true },
-        { text: 'Smart AI job matching with scores', included: true },
-        { text: 'Consent-based auto-apply', included: true },
-        { text: 'AI cover letter generation', included: true },
-        { text: 'Resume version selection', included: true },
-        { text: 'Daily auto-apply limits', included: true },
-        { text: 'Full application tracking', included: true },
-        { text: 'Application confirmation proof', included: true },
-        { text: 'Success analytics dashboard', included: true },
-        { text: 'Priority notifications', included: true },
-        { text: 'Dedicated support', included: true },
-      ],
-      highlight: false,
-    },
+
   ];
 
   const faqs = [
@@ -192,7 +170,7 @@ const PricingPage = () => {
       {/* Pricing Cards */}
       <section className="pb-16">
         <div className="container mx-auto px-4">
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-2 gap-6 max-w-4xl mx-auto">
             {plans.map((plan, index) => (
               <div
                 key={plan.name}
