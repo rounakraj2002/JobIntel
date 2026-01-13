@@ -51,9 +51,8 @@ const JobsPage = () => {
   const [sortBy, setSortBy] = useState<'relevance' | 'date' | 'salary'>('relevance');
   const [showFilters, setShowFilters] = useState(false);
 
-  // Backend base URL (from environment or hardcoded fallback)
-  // This is set via VITE_API_URL during build, or defaults to the known backend URL
-  const backendBase = import.meta.env.VITE_API_URL || 'https://backend-jobintel-fhbecsfnatdkfwas.centralindia-01.azurewebsites.net';
+  // Backend base URL (set VITE_API_URL environment variable during build)
+  const backendBase = import.meta.env.VITE_API_URL || '';
 
   // Fetch jobs from backend (extracted so we can call it on demand)
   const [backendError, setBackendError] = useState<string | null>(null);

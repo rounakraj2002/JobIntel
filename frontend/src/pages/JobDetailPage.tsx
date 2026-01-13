@@ -48,7 +48,7 @@ const JobDetailPage = () => {
     if (!publishedJob && !mockJob && id) {
       setLoading(true);
       setFetchedJob(null);
-      const base = import.meta.env.VITE_API_URL || 'https://backend-jobintel-fhbecsfnatdkfwas.centralindia-01.azurewebsites.net';
+      const base = (import.meta as any).env?.VITE_API_URL || '';
       const url = base ? `${base.replace(/\/$/, '')}/api/jobs/${id}` : `/api/jobs/${id}`;
       fetch(url)
         .then((r) => {
@@ -167,7 +167,7 @@ const JobDetailPage = () => {
   const handleAppliedToggle = async () => {
     if (!isAuthenticated || !user) return;
     try {
-      const base = import.meta.env.VITE_API_URL || 'https://backend-jobintel-fhbecsfnatdkfwas.centralindia-01.azurewebsites.net';
+      const base = (import.meta as any).env?.VITE_API_URL || '';
       const applyUrl = base ? `${base.replace(/\/$/, '')}/api/applications` : '/api/applications';
       if (!applied) {
         const res = await fetch(applyUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ userId: user.id, jobId: id, appliedAt: new Date().toISOString() }) });
