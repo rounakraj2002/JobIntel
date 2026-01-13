@@ -61,7 +61,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: frontend-app
-          path: ./dist
+          path: ./frontend-dist
 
       - name: Deploy to Azure Static Web Apps
         if: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN != '' }}
@@ -70,8 +70,9 @@ jobs:
           azure_static_web_apps_api_token: ${{ secrets.AZURE_STATIC_WEB_APPS_API_TOKEN }}
           repo_token: ${{ secrets.GITHUB_TOKEN }}
           action: 'upload'
-          app_location: '/'
-          output_location: '.'
+          app_location: 'frontend-dist'
+          api_location: ''
+          output_location: ''
           skip_app_build: true
 
       - name: Deployment Token Not Configured

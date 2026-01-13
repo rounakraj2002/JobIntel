@@ -4,12 +4,13 @@
       "route": "/*",
       "serve": "/index.html",
       "statusCode": 200
+    },
+    {
+      "route": "/api/*",
+      "serve": "/api/*",
+      "statusCode": 200
     }
   ],
-  "navigationFallback": {
-    "rewrite": "/index.html",
-    "exclude": ["/api/*"]
-  },
   "mimeTypes": {
     ".json": "application/json"
   }
