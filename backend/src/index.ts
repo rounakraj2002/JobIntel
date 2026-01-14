@@ -25,13 +25,18 @@ const app = express();
 // Configure CORS: set CORS_ORIGIN env (comma-separated) in production for stricter security
 const corsOrigin = process.env.CORS_ORIGIN;
 if (corsOrigin) {
-  const origins = corsOrigin.split(',').map((s) => s.trim());
+  // Normalize configured origins: trim whitespace and remove any trailing slashes
+  const origins = corsOrigin
+    .split(',')
+    .map((s) => s.trim().replace(/\/$/, ''))
+    .filter(Boolean);
 
   // Add a lightweight middleware that always sets the CORS headers for allowed origins.
   // This avoids throwing an error during the CORS check which resulted in 500 responses.
   app.use((req, res, next) => {
     const origin = req.headers.origin as string | undefined;
-    if (origin && (origin === '*' || origins.includes(origin))) {
+    const originNorm = origin ? origin.replace(/\/$/, '') : undefined;
+    if (origin && (origin === '*' || (originNorm && origins.includes(originNorm)))) {
       res.setHeader('Access-Control-Allow-Origin', origin === '*' ? '*' : origin);
       res.setHeader('Access-Control-Allow-Credentials', 'true');
       res.setHeader('Access-Control-Allow-Methods', 'GET,HEAD,PUT,PATCH,POST,DELETE');
@@ -47,7 +52,8 @@ if (corsOrigin) {
     origin: (origin, callback) => {
       // Allow non-browser requests with no origin (curl, server-to-server)
       if (!origin) return callback(null, true);
-      if (origin === '*' || origins.includes(origin as string)) return callback(null, true);
+      const originNorm = (origin as string).replace(/\/$/, '');
+      if (origin === '*' || origins.includes(originNorm)) return callback(null, true);
       // Deny cross-origin requests silently (no exception)
       return callback(null, false);
     },
