@@ -22,7 +22,15 @@ dotenv.config();
 const log = debug("jobintel:server");
 
 const app = express();
-app.use(cors());
+// Configure CORS: set CORS_ORIGIN env (comma-separated) in production for stricter security
+const corsOrigin = process.env.CORS_ORIGIN;
+if (corsOrigin) {
+  const origins = corsOrigin.split(',').map((s) => s.trim());
+  app.use(cors({ origin: origins, credentials: true }));
+} else {
+  // Default to permissive for local dev
+  app.use(cors());
+}
 // Capture raw body for webhook signature verification
 app.use(express.json({ verify: (req: any, _res, buf: Buffer, _encoding) => {
   // store raw body string for use in webhook verification
