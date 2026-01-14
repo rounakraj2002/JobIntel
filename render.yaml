@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: jobintel-backend
+    env: node
+    plan: free
+    region: oregon
+    buildCommand: "npm ci --prefix backend && npm run build --prefix backend"
+    startCommand: "npm start --prefix backend"
+    autoDeploy: true
+    envVars:
+      - key: MONGO_URI
+        value: ""
+      - key: JWT_SECRET
+        value: ""
+      - key: GITHUB_CLIENT_ID
+        value: ""
+      - key: GITHUB_CLIENT_SECRET
+        value: ""
+      - key: GITHUB_CALLBACK_URL
+        value: "https://<your-backend>.onrender.com/auth/github/callback"

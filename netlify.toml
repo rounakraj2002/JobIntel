@@ -1,0 +1,13 @@
+# Netlify config for frontend
+[build]
+  command = "npm ci && npm run build"
+  publish = "dist"
+
+[build.environment]
+  # Set this in Netlify UI to the deployed backend URL (do NOT commit secrets here)
+  VITE_API_URL = "https://<your-backend>.onrender.com"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
