@@ -6,7 +6,20 @@ import "./index.css";
 // This ensures all calls to /api/* go to the backend specified by VITE_API_URL
 // (set in Netlify environment variables) instead of being routed to the static host.
 if (typeof window !== 'undefined') {
-  const backendBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  // Prefer build-time VITE_API_URL. If it's missing (e.g., Netlify env not set for some reason),
+  // provide a safe runtime fallback for our deployed site so API calls don't hit the static host.
+  const envBase = (import.meta.env.VITE_API_URL || '').replace(/\/$/, '');
+  let backendBase = envBase;
+
+  if (!backendBase) {
+    // Fallback for the public Netlify site if env wasn't provided during build
+    const host = window.location.hostname;
+    if (host === 'jobintell.netlify.app') {
+      backendBase = 'https://jobintel-backend.onrender.com';
+      console.warn('[runtime] VITE_API_URL not set — falling back to', backendBase);
+    }
+  }
+
   if (backendBase) {
     const origFetch = window.fetch.bind(window);
     // @ts-ignore - augment global fetch
