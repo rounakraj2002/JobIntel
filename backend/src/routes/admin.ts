@@ -10,6 +10,7 @@ import {
   getAdminStats,
   getJobAnalytics,
   getUserAnalytics,
+  getUserStats,
   getRevenueAnalytics,
   getNotifications,
 } from '../controllers/adminController';
@@ -30,6 +31,7 @@ const router = express.Router();
 router.get('/stats', authenticateToken, requireRole('admin'), getAdminStats);
 router.get('/analytics/jobs', authenticateToken, requireRole('admin'), getJobAnalytics);
 router.get('/analytics/users', authenticateToken, requireRole('admin'), getUserAnalytics);
+router.get('/users/stats', authenticateToken, requireRole('admin'), getUserStats);
 router.get('/analytics/revenue', authenticateToken, requireRole('admin'), getRevenueAnalytics);
 router.get('/notifications', authenticateToken, requireRole('admin'), getNotifications);
 

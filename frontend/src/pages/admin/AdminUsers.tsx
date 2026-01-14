@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Search, Filter, Download, Users, Crown, Zap, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,7 +12,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { adminStats, userAnalytics } from '@/data/adminMockData';
 import {
   LineChart,
   Line,
@@ -38,6 +37,32 @@ const mockUsers = [
   { id: '8', name: 'Lisa Chen', email: 'lisa@example.com', tier: 'premium', joinedAt: '2024-01-22', applications: 6, lastActive: '4 hours ago' },
 ];
 
+interface UserData {
+  id: string;
+  name: string;
+  email: string;
+  tier: string;
+  joinedAt: string;
+  applications: number;
+  lastActive: string;
+}
+
+interface UserStatsData {
+  stats: {
+    totalUsers: number;
+    premiumUsers: number;
+    freeUsers: number;
+    applicationsToday: number;
+    conversionRate: number;
+  };
+  recentUsers: UserData[];
+  growthData: Array<{
+    date: string;
+    free: number;
+    premium: number;
+  }>;
+}
+
 const tierColors: Record<string, string> = {
   free: 'bg-gray-100 text-gray-800',
   premium: 'bg-purple-100 text-purple-800',
@@ -48,19 +73,77 @@ const tierIcons: Record<string, React.ReactNode> = {
   premium: <Crown className="h-3 w-3" />,
 };
 
-const pieData = [
-  { name: 'Free', value: Math.max(0, adminStats.totalUsers - adminStats.premiumUsers), color: 'hsl(var(--muted-foreground))' },
-  { name: 'Premium', value: adminStats.premiumUsers, color: '#8b5cf6' },
-];
-
 export default function AdminUsers() {
   const [searchQuery, setSearchQuery] = useState('');
+  const [stats, setStats] = useState<UserStatsData | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  const filteredUsers = mockUsers.filter(
+  useEffect(() => {
+    const fetchUserStats = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        const token = localStorage.getItem('token');
+        const headers: Record<string, string> = {};
+        if (token) {
+          headers.Authorization = `Bearer ${token}`;
+        }
+        
+        const response = await fetch('/api/admin/users/stats', {
+          headers,
+        });
+        
+        if (!response.ok) {
+          throw new Error('Failed to fetch user stats');
+        }
+        
+        const data: UserStatsData = await response.json();
+        setStats(data);
+      } catch (err) {
+        console.error('Error fetching user stats:', err);
+        setError(err instanceof Error ? err.message : 'Failed to load data');
+        // Fall back to mock data on error
+        setStats({
+          stats: {
+            totalUsers: 0,
+            premiumUsers: 0,
+            freeUsers: 0,
+            applicationsToday: 0,
+            conversionRate: 0,
+          },
+          recentUsers: mockUsers,
+          growthData: [],
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchUserStats();
+  }, []);
+
+  const displayStats = stats?.stats || {
+    totalUsers: 0,
+    premiumUsers: 0,
+    freeUsers: 0,
+    applicationsToday: 0,
+    conversionRate: 0,
+  };
+
+  const displayUsers = stats?.recentUsers || mockUsers;
+  const displayGrowthData = stats?.growthData || [];
+
+  const filteredUsers = displayUsers.filter(
     (user) =>
       user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       user.email.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const pieData = [
+    { name: 'Free', value: Math.max(0, displayStats.freeUsers), color: 'hsl(var(--muted-foreground))' },
+    { name: 'Premium', value: displayStats.premiumUsers, color: '#8b5cf6' },
+  ];
 
   return (
     <div className="space-y-6">
@@ -85,7 +168,7 @@ export default function AdminUsers() {
               <span className="text-sm text-muted-foreground">Total Users</span>
             </div>
             <div className="mt-2 text-3xl font-bold text-foreground">
-              {adminStats.totalUsers.toLocaleString()}
+              {displayStats.totalUsers.toLocaleString()}
             </div>
             <p className="text-sm text-green-600">+18% from last month</p>
           </CardContent>
@@ -97,7 +180,7 @@ export default function AdminUsers() {
               <span className="text-sm text-muted-foreground">Premium Users</span>
             </div>
             <div className="mt-2 text-3xl font-bold text-foreground">
-              {adminStats.premiumUsers.toLocaleString()}
+              {displayStats.premiumUsers.toLocaleString()}
             </div>
             <p className="text-sm text-green-600">+24% from last month</p>
           </CardContent>
@@ -109,7 +192,7 @@ export default function AdminUsers() {
               <span className="text-sm text-muted-foreground">Applications Today</span>
             </div>
             <div className="mt-2 text-3xl font-bold text-foreground">
-              {adminStats.applicationsToday.toLocaleString()}
+              {displayStats.applicationsToday.toLocaleString()}
             </div>
             <p className="text-sm text-green-600">Realtime count</p>
           </CardContent>
@@ -120,7 +203,7 @@ export default function AdminUsers() {
               <TrendingUp className="h-5 w-5 text-blue-600" />
               <span className="text-sm text-muted-foreground">Conversion Rate</span>
             </div>
-            <div className="mt-2 text-3xl font-bold text-foreground">14.2%</div>
+            <div className="mt-2 text-3xl font-bold text-foreground">{displayStats.conversionRate.toFixed(1)}%</div>
             <p className="text-sm text-green-600">+2.4% from last month</p>
           </CardContent>
         </Card>
@@ -135,7 +218,7 @@ export default function AdminUsers() {
           <CardContent>
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={userAnalytics}>
+                <LineChart data={displayGrowthData}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
                   <XAxis dataKey="date" className="text-xs" />
                   <YAxis className="text-xs" />

@@ -7,6 +7,8 @@ import { Snapshot } from '../models/Snapshot';
 import { hashContent } from '../services/deltaDetector';
 import { NotificationLog } from '../models/NotificationLog';
 import { Revenue } from '../models/Revenue';
+import { User } from '../models/User';
+import { Application } from '../models/Application';
 
 // Get dashboard statistics
 export async function getAdminStats(_req: Request, res: Response) {
@@ -51,6 +53,128 @@ export async function getAdminStats(_req: Request, res: Response) {
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
+}
+
+// Get user analytics with stats and recent users
+export async function getUserStats(_req: Request, res: Response) {
+  try {
+    const totalUsers = await User.countDocuments();
+    const premiumUsers = await User.countDocuments({ tier: 'premium' });
+    const freeUsers = totalUsers - premiumUsers;
+    
+    // Applications today
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const applicationsToday = await Application.countDocuments({
+      createdAt: { $gte: today }
+    });
+
+    // Conversion rate (premium users / total users)
+    const conversionRate = totalUsers > 0 ? Number(((premiumUsers / totalUsers) * 100).toFixed(1)) : 0;
+
+    // Get recent users (last 20)
+    const recentUsers = await User.find()
+      .select('email name tier createdAt')
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .lean();
+
+    // Count applications per user
+    const userAppCounts = await Application.aggregate([
+      {
+        $group: {
+          _id: '$userId',
+          count: { $sum: 1 }
+        }
+      }
+    ]);
+    
+    const appCountMap = new Map(userAppCounts.map(doc => [doc._id?.toString(), doc.count]));
+
+    // Get last active time for each user
+    const userLastActive = await Application.aggregate([
+      {
+        $group: {
+          _id: '$userId',
+          lastActive: { $max: '$createdAt' }
+        }
+      }
+    ]);
+    
+    const lastActiveMap = new Map(userLastActive.map(doc => [doc._id?.toString(), doc.lastActive]));
+
+    // Format recent users with application counts and last active
+    const enrichedRecentUsers = recentUsers.map(user => ({
+      id: user._id?.toString(),
+      name: user.name || 'Unknown',
+      email: user.email,
+      tier: user.tier || 'free',
+      joinedAt: new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
+      applications: appCountMap.get(user._id?.toString()) || 0,
+      lastActive: formatLastActive(lastActiveMap.get(user._id?.toString())),
+    }));
+
+    // Get user growth over last 7 days
+    const last7Days = [];
+    for (let i = 6; i >= 0; i--) {
+      const date = new Date();
+      date.setDate(date.getDate() - i);
+      date.setHours(0, 0, 0, 0);
+      
+      const nextDate = new Date(date);
+      nextDate.setDate(nextDate.getDate() + 1);
+
+      const freeCount = await User.countDocuments({
+        tier: { $ne: 'premium' },
+        createdAt: { $gte: date, $lt: nextDate }
+      });
+      
+      const premiumCount = await User.countDocuments({
+        tier: 'premium',
+        createdAt: { $gte: date, $lt: nextDate }
+      });
+
+      last7Days.push({
+        date: date.toLocaleDateString('en-US', { weekday: 'short' }),
+        free: freeCount,
+        premium: premiumCount,
+      });
+    }
+
+    res.json({
+      stats: {
+        totalUsers,
+        premiumUsers,
+        freeUsers,
+        applicationsToday,
+        conversionRate,
+      },
+      recentUsers: enrichedRecentUsers,
+      growthData: last7Days,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    console.error('User stats error:', err);
+    res.status(500).json({ error: String(err) });
+  }
+}
+
+// Helper function to format last active time
+function formatLastActive(date: Date | undefined): string {
+  if (!date) return 'Never';
+  
+  const now = new Date();
+  const diffMs = now.getTime() - new Date(date).getTime();
+  const diffMins = Math.floor(diffMs / 60000);
+  const diffHours = Math.floor(diffMs / 3600000);
+  const diffDays = Math.floor(diffMs / 86400000);
+
+  if (diffMins < 1) return 'Just now';
+  if (diffMins < 60) return `${diffMins} mins ago`;
+  if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+  if (diffDays < 7) return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+  
+  return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 }
 
 // Get job analytics data
