@@ -4,8 +4,6 @@ services:
     env: node
     plan: free
     region: oregon
-    buildCommand: "bash build.sh"
-    startCommand: "npm start --prefix backend"
     autoDeploy: true
     envVars:
       - key: MONGO_URI
