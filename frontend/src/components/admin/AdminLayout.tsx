@@ -21,7 +21,7 @@ export function AdminLayout() {
             </Button>
           </DrawerTrigger>
           <DrawerContent className="w-full max-w-xs p-0">
-            {/* Reuse sidebar navigation for mobile: render simplified nav */}
+            {/* Reuse sidebar navigation for mobile: render all nav items */}
             <div className="p-4">
               <div className="mb-4 flex items-center gap-2">
                 <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-primary to-primary-glow flex items-center justify-center">
@@ -30,14 +30,21 @@ export function AdminLayout() {
                 <span className="font-bold text-foreground">Admin</span>
               </div>
               <nav className="flex flex-col gap-2">
-                {/* replicate nav items */}
-                <a href="/admin" className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted">Dashboard</a>
-                <a href="/admin/jobs" className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted">Jobs</a>
-                <a href="/admin/users" className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted">Users</a>
-                <a href="/admin/notifications" className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted">Notifications</a>
-                <a href="/admin/revenue" className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted">Revenue</a>
-                <a href="/" className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted">Exit Admin</a>
+                <a href="/admin" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted">Dashboard</a>
+                <a href="/admin/jobs" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted">Jobs</a>
+                <a href="/admin/users" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted">Users</a>
+                <a href="/admin/notifications" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted">Notifications</a>
+                <a href="/admin/referrals" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted">Referrals</a>
+                <a href="/admin/crawlers" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted">Crawlers</a>
+                <a href="/admin/analytics" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted">Analytics</a>
+                <a href="/admin/revenue" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted">Revenue</a>
+                <a href="/admin/settings" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted">Settings</a>
+                <a href="/admin/profile-fields" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted">Profile Fields</a>
+                <a href="/admin/skills" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted">Skills</a>
               </nav>
+              <div className="mt-4 border-t pt-4">
+                <a href="/" onClick={() => setOpen(false)} className="rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted block">Exit Admin</a>
+              </div>
             </div>
           </DrawerContent>
         </Drawer>

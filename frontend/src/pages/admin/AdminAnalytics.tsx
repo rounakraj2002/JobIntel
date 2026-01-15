@@ -182,7 +182,7 @@ export default function AdminAnalytics() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{visitorAnalytics?.summary.totalPageViews || 0}</div>
-              <p className="text-xs text-muted-foreground">{visitorAnalytics?.summary.avgPageViewsPerVisitor.toFixed(2) || 0} avg per visitor</p>
+              <p className="text-xs text-muted-foreground">{(typeof visitorAnalytics?.summary.avgPageViewsPerVisitor === 'number' && visitorAnalytics.summary.avgPageViewsPerVisitor >= 0) ? visitorAnalytics.summary.avgPageViewsPerVisitor.toFixed(2) : '0'} avg per visitor</p>
             </CardContent>
           </Card>
           <Card>
@@ -194,7 +194,7 @@ export default function AdminAnalytics() {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{visitorAnalytics?.summary.totalClicks || 0}</div>
-              <p className="text-xs text-muted-foreground">{visitorAnalytics?.summary.avgClicksPerVisitor.toFixed(2) || 0} avg per visitor</p>
+              <p className="text-xs text-muted-foreground">{(typeof visitorAnalytics?.summary.avgClicksPerVisitor === 'number' && visitorAnalytics.summary.avgClicksPerVisitor >= 0) ? visitorAnalytics.summary.avgClicksPerVisitor.toFixed(2) : '0'} avg per visitor</p>
             </CardContent>
           </Card>
         </div>
