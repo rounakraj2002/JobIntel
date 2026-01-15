@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -32,16 +32,19 @@ import { Job, JobType, ExperienceLevel } from '@/types';
 import { useAuthStore } from '@/store/authStore';
 import { useJobsStore } from '@/store/jobsStore';
 import { useApplicationStore } from '@/store/applicationStore';
+import AuthRequiredModal from '@/components/AuthRequiredModal';
 
 const JobsPage = () => {
+  const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
   const { publishedJobs } = useJobsStore();
   
   const [backendJobs, setBackendJobs] = useState<any[]>([]);
+  const [hasBackendLoaded, setHasBackendLoaded] = useState(false);
   // use application store for realtime updates
   const appStore = useApplicationStore();
   const userApplications = appStore.applications;
-  const [loadingJobs, setLoadingJobs] = useState(true);
+  const [loadingJobs, setLoadingJobs] = useState(false);
   
   const [searchQuery, setSearchQuery] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
@@ -52,6 +55,10 @@ const JobsPage = () => {
   const [remoteOnly, setRemoteOnly] = useState(false);
   const [sortBy, setSortBy] = useState<'relevance' | 'date' | 'salary'>('date');
   const [showFilters, setShowFilters] = useState(false);
+  const [authModalOpen, setAuthModalOpen] = useState(false);
+  const [selectedJobForAuth, setSelectedJobForAuth] = useState<{ id: string; title: string } | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const jobsPerPage = 15;
 
   // Backend base URL (set VITE_API_URL environment variable during build)
   const backendBase = import.meta.env.VITE_API_URL || '';
@@ -71,20 +78,24 @@ const JobsPage = () => {
         try {
           const jobs = await response.json();
           setBackendJobs(jobs);
+          setHasBackendLoaded(true);
           console.debug('fetchJobs: retrieved', Array.isArray(jobs) ? jobs.length : 0, 'jobs from backend');
         } catch (jsonErr) {
           console.warn('Backend returned invalid JSON, using local store only');
           setBackendJobs([]);
+          setHasBackendLoaded(true);
           setBackendError('Invalid JSON from backend');
         }
       } else {
         console.warn(`Backend returned status ${response.status}, using local store only`);
         setBackendJobs([]);
+        setHasBackendLoaded(true);
         setBackendError(`Status ${response.status}`);
       }
     } catch (err: any) {
       console.warn('Backend not available, using local store only:', err);
       setBackendJobs([]);
+      setHasBackendLoaded(true);
       setBackendError(err?.message || String(err));
     } finally {
       setLoadingJobs(false);
@@ -123,7 +134,7 @@ const JobsPage = () => {
     return () => clearInterval(iv);
   }, []);
 
-  // Combine mock jobs with published jobs (local store and backend)
+  // Combine only backend jobs - no mock data
   const allJobs = useMemo(() => {
     const parseSalaryString = (s?: string) => {
       if (!s) return undefined;
@@ -158,32 +169,8 @@ const JobsPage = () => {
         return undefined;
       }
     };
-    const convertedPublished = publishedJobs
-      .filter(pj => pj.status === 'active')
-      .map((pj) => ({
-        id: pj.id,
-        title: pj.title,
-        company: {
-          name: pj.company,
-          logo: undefined,
-          description: '',
-          website: '',
-          industry: 'Technology',
-        },
-        location: pj.location,
-        isRemote: pj.isRemote,
-        type: 'full-time' as JobType,
-        experienceLevel: 'fresher' as ExperienceLevel,
-        experienceRange: { min: 0, max: 3 },
-        salary: pj.salary ? { min: 0, max: 100000, currency: 'INR' } : undefined,
-        description: pj.description,
-        requirements: [],
-        skills: pj.techStack,
-        batch: pj.batch,
-        applyLink: (pj as any).applyLink || (pj as any).applyUrl || '#',
-        postedAt: pj.createdAt,
-      })) as Job[];
 
+    // Only use backend jobs - no mock data fallback
     const convertedBackendJobs = backendJobs.map((bj) => ({
       id: bj._id,
       title: bj.title,
@@ -208,14 +195,9 @@ const JobsPage = () => {
       postedAt: bj.createdAt,
     })) as Job[];
 
-    // Use only backend jobs if available, otherwise fall back to mock + published jobs
-    // Backend is the source of truth - don't mix to avoid duplicates
-    const result = backendJobs.length > 0 
-      ? convertedBackendJobs
-      : [...mockJobs, ...convertedPublished];
-    console.debug('allJobs: mock=', mockJobs.length, 'published=', convertedPublished.length, 'backend=', convertedBackendJobs.length, 'total=', result.length);
-    return result;
-  }, [publishedJobs, backendJobs]);
+    console.debug('[allJobs] Backend jobs loaded:', convertedBackendJobs.length, 'hasBackendLoaded:', hasBackendLoaded);
+    return convertedBackendJobs;
+  }, [backendJobs, hasBackendLoaded]);
 
   const jobTypes: { value: JobType; label: string }[] = [
     { value: 'full-time', label: 'Full-time' },
@@ -310,28 +292,48 @@ const JobsPage = () => {
     return Array.from(companies).sort();
   }, [allJobs]);
 
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredJobs.length / jobsPerPage);
+  const startIndex = (currentPage - 1) * jobsPerPage;
+  const endIndex = startIndex + jobsPerPage;
+  const currentJobs = filteredJobs.slice(startIndex, endIndex);
+
+  // Reset to page 1 when filters change
+  const handleFilterChange = (callback: () => void) => {
+    setCurrentPage(1);
+    callback();
+  };
+
   const toggleTypeFilter = (type: JobType) => {
-    setTypeFilters((prev) =>
-      prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
-    );
+    handleFilterChange(() => {
+      setTypeFilters((prev) =>
+        prev.includes(type) ? prev.filter((t) => t !== type) : [...prev, type]
+      );
+    });
   };
 
   const toggleExperienceFilter = (level: ExperienceLevel) => {
-    setExperienceFilters((prev) =>
-      prev.includes(level) ? prev.filter((l) => l !== level) : [...prev, level]
-    );
+    handleFilterChange(() => {
+      setExperienceFilters((prev) =>
+        prev.includes(level) ? prev.filter((l) => l !== level) : [...prev, level]
+      );
+    });
   };
 
   const toggleBatchFilter = (batch: number) => {
-    setBatchFilters((prev) =>
-      prev.includes(batch) ? prev.filter((b) => b !== batch) : [...prev, batch]
-    );
+    handleFilterChange(() => {
+      setBatchFilters((prev) =>
+        prev.includes(batch) ? prev.filter((b) => b !== batch) : [...prev, batch]
+      );
+    });
   };
 
   const toggleCompanyFilter = (company: string) => {
-    setCompanyFilters((prev) =>
-      prev.includes(company) ? prev.filter((c) => c !== company) : [...prev, company]
-    );
+    handleFilterChange(() => {
+      setCompanyFilters((prev) =>
+        prev.includes(company) ? prev.filter((c) => c !== company) : [...prev, company]
+      );
+    });
   };
 
   const clearFilters = () => {
@@ -342,6 +344,7 @@ const JobsPage = () => {
     setBatchFilters([]);
     setCompanyFilters([]);
     setRemoteOnly(false);
+    setCurrentPage(1);
     // Re-fetch jobs from backend when clearing filters to ensure live data shows up
     fetchJobs();
   };
@@ -529,6 +532,7 @@ const JobsPage = () => {
         <div className="flex items-center justify-between mb-6">
           <p className="text-muted-foreground">
             <span className="font-medium text-foreground">{filteredJobs.length}</span> jobs found
+            {loadingJobs && !hasBackendLoaded && <span className="ml-2 text-xs">(Loading...)</span>}
           </p>
           <Select value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
             <SelectTrigger className="w-40">
@@ -542,9 +546,20 @@ const JobsPage = () => {
           </Select>
         </div>
 
+        {/* Loading state while backend is fetching and no local data available */}
+        {loadingJobs && !hasBackendLoaded && filteredJobs.length === 0 && (
+          <div className="text-center py-12">
+            <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-4">
+              <Clock className="h-6 w-6 text-muted-foreground animate-spin" />
+            </div>
+            <p className="text-muted-foreground">Loading jobs...</p>
+          </div>
+        )}
+
         {/* Job Cards */}
-        <div className="space-y-4">
-          {filteredJobs.map((job, index) => (
+        {!loadingJobs || hasBackendLoaded || filteredJobs.length > 0 ? (
+          <div className="space-y-4">
+          {currentJobs.map((job, index) => (
             <div
               key={job.id}
               className="bg-card rounded-xl border border-border p-6 shadow-soft job-card-hover animate-fade-in"
@@ -637,30 +652,61 @@ const JobsPage = () => {
                       )}
                     </div>
 
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-1 sm:gap-2">
                       {isAuthenticated && (
                         <Button variant="ghost" size="iconSm">
                           <Bookmark className="h-4 w-4" />
                         </Button>
                       )}
-                      <Link to={`/jobs/${job.id}`}>
-                        <Button variant="outline" size="sm">
+                      {isAuthenticated ? (
+                        <Link to={`/jobs/${job.id}`}>
+                          <Button variant="outline" size="sm" className="text-xs sm:text-sm">
+                            View Details
+                            <ChevronRight className="h-4 w-4 ml-1 hidden sm:inline" />
+                          </Button>
+                        </Link>
+                      ) : (
+                        <Button 
+                          variant="outline" 
+                          size="sm"
+                          className="text-xs sm:text-sm"
+                          onClick={() => {
+                            setSelectedJobForAuth({ id: job.id, title: job.title });
+                            setAuthModalOpen(true);
+                          }}
+                        >
                           View Details
-                          <ChevronRight className="h-4 w-4 ml-1" />
+                          <ChevronRight className="h-4 w-4 ml-1 hidden sm:inline" />
                         </Button>
-                      </Link>
+                      )}
                       {!userApplications[job.id] ? (
                         <>
-                          <a href={job.applyLink} target="_blank" rel="noopener noreferrer">
-                            <Button variant="accent" size="sm">
+                          {isAuthenticated ? (
+                            <a href={job.applyLink} target="_blank" rel="noopener noreferrer">
+                              <Button variant="accent" size="sm" className="text-xs sm:text-sm">
+                                Apply Now
+                                <ExternalLink className="h-4 w-4 ml-1 hidden sm:inline" />
+                              </Button>
+                            </a>
+                          ) : (
+                            <Button 
+                              variant="accent" 
+                              size="sm"
+                              className="text-xs sm:text-sm"
+                              onClick={() => {
+                                setSelectedJobForAuth({ id: job.id, title: job.title });
+                                setAuthModalOpen(true);
+                              }}
+                            >
                               Apply Now
-                              <ExternalLink className="h-4 w-4 ml-1" />
+                              <ExternalLink className="h-4 w-4 ml-1 hidden sm:inline" />
                             </Button>
-                          </a>
+                          )}
                           {isAuthenticated && (
                             <Button
                               variant="outline"
                               size="sm"
+                              className="text-xs sm:text-sm"
                               onClick={async () => {
                                 try {
                                   const base = backendBase ? backendBase.replace(/\/$/, '') : '';
@@ -679,11 +725,11 @@ const JobsPage = () => {
                           )}
                         </>
                       ) : (
-                        <div className="flex items-center gap-2">
-                          <Button variant="ghost" size="sm" disabled>
+                        <div className="flex flex-wrap items-center gap-1 sm:gap-2">
+                          <Button variant="ghost" size="sm" disabled className="text-xs sm:text-sm">
                             Applied
                           </Button>
-                          <Button variant="link" size="sm" onClick={async () => {
+                          <Button variant="link" size="sm" className="text-xs sm:text-sm" onClick={async () => {
                             try {
                               const app = userApplications[job.id];
                               if (!app || !app._id) return;
@@ -704,8 +750,90 @@ const JobsPage = () => {
             </div>
           ))}
         </div>
+        ) : null}
 
-        {filteredJobs.length === 0 && (
+        {/* Pagination Controls */}
+        {filteredJobs.length > 0 && !loadingJobs && (
+          <div className="mt-12 flex flex-col items-center gap-6">
+            {/* Pagination Info */}
+            <div className="text-center">
+              <p className="text-sm text-muted-foreground">
+                Showing <span className="font-medium text-foreground">{startIndex + 1}</span> to{' '}
+                <span className="font-medium text-foreground">{Math.min(endIndex, filteredJobs.length)}</span> of{' '}
+                <span className="font-medium text-foreground">{filteredJobs.length}</span> jobs
+              </p>
+            </div>
+
+            {/* Pagination Buttons */}
+            {totalPages > 1 && (
+              <div className="flex items-center gap-3">
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setCurrentPage((prev) => Math.max(prev - 1, 1));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  disabled={currentPage === 1}
+                  className="gap-2"
+                >
+                  <span>← Previous</span>
+                </Button>
+
+                {/* Page Numbers */}
+                <div className="flex items-center gap-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => {
+                    // Show first 3, current, and last page
+                    const showPage =
+                      pageNum <= 3 ||
+                      pageNum === totalPages ||
+                      (pageNum >= currentPage - 1 && pageNum <= currentPage + 1);
+
+                    if (!showPage && pageNum !== 4 && pageNum !== totalPages - 1) {
+                      return null;
+                    }
+
+                    if ((pageNum === 4 || pageNum === totalPages - 1) && !showPage) {
+                      return (
+                        <span key={`ellipsis-${pageNum}`} className="px-2 py-2 text-muted-foreground">
+                          ...
+                        </span>
+                      );
+                    }
+
+                    return (
+                      <Button
+                        key={pageNum}
+                        variant={currentPage === pageNum ? 'default' : 'outline'}
+                        size="sm"
+                        onClick={() => {
+                          setCurrentPage(pageNum);
+                          window.scrollTo({ top: 0, behavior: 'smooth' });
+                        }}
+                        className="h-10 w-10 p-0"
+                      >
+                        {pageNum}
+                      </Button>
+                    );
+                  })}
+                </div>
+
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setCurrentPage((prev) => Math.min(prev + 1, totalPages));
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                  }}
+                  disabled={currentPage === totalPages}
+                  className="gap-2"
+                >
+                  <span>Next →</span>
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {filteredJobs.length === 0 && !loadingJobs && (
           <div className="text-center py-12">
             <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-4">
               <Search className="h-8 w-8 text-muted-foreground" />
@@ -718,6 +846,13 @@ const JobsPage = () => {
           </div>
         )}
       </div>
+
+      <AuthRequiredModal 
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        jobTitle={selectedJobForAuth?.title}
+        redirectPath={selectedJobForAuth ? `/jobs/${selectedJobForAuth.id}` : '/jobs'}
+      />
     </div>
   );
 };

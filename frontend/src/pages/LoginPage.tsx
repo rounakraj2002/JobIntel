@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const LoginPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { login, isLoading } = useAuthStore();
   const { toast } = useToast();
   
@@ -17,6 +18,10 @@ const LoginPage = () => {
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState('');
+  const [redirecting, setRedirecting] = useState(false);
+
+  // Get the redirect destination from location state
+  const from = (location.state as any)?.from || '/dashboard';
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -35,7 +40,11 @@ const LoginPage = () => {
         title: 'Welcome back!',
         description: 'You have successfully logged in.',
       });
-      navigate(isAdmin ? '/admin' : '/dashboard');
+      setRedirecting(true);
+      // Redirect to the job page after 2 seconds
+      setTimeout(() => {
+        navigate(from, { replace: true });
+      }, 2000);
     } else {
       setError('Invalid email or password.');
     }

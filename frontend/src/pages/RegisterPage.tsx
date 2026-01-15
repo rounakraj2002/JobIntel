@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 
 const RegisterPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { register, isLoading } = useAuthStore();
   const { toast } = useToast();
   
@@ -20,6 +21,10 @@ const RegisterPage = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [acceptTerms, setAcceptTerms] = useState(false);
   const [error, setError] = useState('');
+  const [redirecting, setRedirecting] = useState(false);
+
+  // Get the redirect destination from location state
+  const from = (location.state as any)?.from || '/dashboard';
 
   const passwordRequirements = [
     { label: 'At least 8 characters', met: password.length >= 8 },
@@ -58,7 +63,11 @@ const RegisterPage = () => {
         title: 'Account created!',
         description: 'Welcome to JobIntel. Start exploring jobs now.',
       });
-      navigate('/dashboard');
+      setRedirecting(true);
+      // Redirect to the job page after 2 seconds
+      setTimeout(() => {
+        navigate(from, { replace: true });
+      }, 2000);
     } else {
       setError('Registration failed. Please try again.');
     }
@@ -200,11 +209,16 @@ const RegisterPage = () => {
               </Label>
             </div>
 
-            <Button type="submit" className="w-full" size="lg" disabled={isLoading}>
+            <Button type="submit" className="w-full" size="lg" disabled={isLoading || redirecting}>
               {isLoading ? (
                 <span className="flex items-center gap-2">
                   <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   Creating account...
+                </span>
+              ) : redirecting ? (
+                <span className="flex items-center gap-2">
+                  <span className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  Redirecting...
                 </span>
               ) : (
                 <span className="flex items-center gap-2">

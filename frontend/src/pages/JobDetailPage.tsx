@@ -1,4 +1,4 @@
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import Seo from '@/components/Seo';
 import { Button } from '@/components/ui/button';
@@ -29,12 +29,15 @@ import { useAuthStore } from '@/store/authStore';
 import { useJobsStore } from '@/store/jobsStore';
 import { useToast } from '@/hooks/use-toast';
 import { useApplicationStore } from '@/store/applicationStore';
+import AuthRequiredModal from '@/components/AuthRequiredModal';
 
 const JobDetailPage = () => {
+  const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const { user, isAuthenticated } = useAuthStore();
   const { toast } = useToast();
   const { publishedJobs } = useJobsStore();
+  const [authModalOpen, setAuthModalOpen] = useState(false);
 
   // Try to find job from published jobs first, then from mock data, otherwise fetch from backend
   const publishedJob = publishedJobs.find((j) => j.id === id);
@@ -337,12 +340,24 @@ const JobDetailPage = () => {
                   <Share2 className="h-5 w-5" />
                 </Button>
               </div>
-              <a href={job.applyLink} target="_blank" rel="noopener noreferrer" className="w-full lg:w-auto">
-                <Button variant="accent" size="lg" className="w-full">
+              {isAuthenticated ? (
+                <a href={job.applyLink} target="_blank" rel="noopener noreferrer" className="w-full lg:w-auto">
+                  <Button variant="accent" size="lg" className="w-full">
+                    Apply Now
+                    <ExternalLink className="h-4 w-4 ml-2" />
+                  </Button>
+                </a>
+              ) : (
+                <Button 
+                  variant="accent" 
+                  size="lg" 
+                  className="w-full"
+                  onClick={() => setAuthModalOpen(true)}
+                >
                   Apply Now
                   <ExternalLink className="h-4 w-4 ml-2" />
                 </Button>
-              </a>
+              )}
               {isAuthenticated && (
                 <div className="mt-2">
                   <Button variant={applied ? 'outline' : 'secondary'} onClick={handleAppliedToggle}>
@@ -561,6 +576,13 @@ const JobDetailPage = () => {
           </div>
         </div>
       </div>
+
+      <AuthRequiredModal 
+        isOpen={authModalOpen}
+        onClose={() => setAuthModalOpen(false)}
+        jobTitle={job?.title}
+        redirectPath={`/jobs/${id}`}
+      />
     </div>
     </>
   );
