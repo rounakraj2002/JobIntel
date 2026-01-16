@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react';
 import Seo from '@/components/Seo';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import {
   MapPin,
   Building2,
@@ -37,6 +38,7 @@ const JobDetailPage = () => {
   const { user, isAuthenticated } = useAuthStore();
   const { toast } = useToast();
   const { publishedJobs } = useJobsStore();
+  const { trackClick } = useAnalytics();
   const [authModalOpen, setAuthModalOpen] = useState(false);
 
   // Try to find job from published jobs first, then from mock data, otherwise fetch from backend
@@ -341,7 +343,7 @@ const JobDetailPage = () => {
                 </Button>
               </div>
               {isAuthenticated ? (
-                <a href={job.applyLink} target="_blank" rel="noopener noreferrer" className="w-full lg:w-auto">
+                <a href={job.applyLink} target="_blank" rel="noopener noreferrer" className="w-full lg:w-auto" onClick={() => trackClick('apply_job_detail', { jobId: job.id, jobTitle: job.title })}>
                   <Button variant="accent" size="lg" className="w-full">
                     Apply Now
                     <ExternalLink className="h-4 w-4 ml-2" />
@@ -352,7 +354,10 @@ const JobDetailPage = () => {
                   variant="accent" 
                   size="lg" 
                   className="w-full"
-                  onClick={() => setAuthModalOpen(true)}
+                  onClick={() => {
+                    trackClick('apply_job_detail_unauthenticated', { jobId: job.id, jobTitle: job.title });
+                    setAuthModalOpen(true);
+                  }}
                 >
                   Apply Now
                   <ExternalLink className="h-4 w-4 ml-2" />

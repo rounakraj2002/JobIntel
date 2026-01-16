@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Search, Filter, Download, Users, Crown, Zap, TrendingUp } from 'lucide-react';
+import { Search, Filter, Download, Users, Crown, Zap, TrendingUp, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,22 +25,11 @@ import {
   Cell,
 } from 'recharts';
 
-// Mock user data
-const mockUsers = [
-  { id: '1', name: 'John Doe', email: 'john@example.com', tier: 'premium', joinedAt: '2024-01-05', applications: 12, lastActive: '2 hours ago' },
-  { id: '2', name: 'Jane Smith', email: 'jane@example.com', tier: 'premium', joinedAt: '2024-01-08', applications: 8, lastActive: '5 hours ago' },
-  { id: '3', name: 'Mike Johnson', email: 'mike@example.com', tier: 'free', joinedAt: '2024-01-10', applications: 3, lastActive: '1 day ago' },
-  { id: '4', name: 'Sarah Wilson', email: 'sarah@example.com', tier: 'premium', joinedAt: '2024-01-12', applications: 15, lastActive: '30 mins ago' },
-  { id: '5', name: 'Alex Brown', email: 'alex@example.com', tier: 'free', joinedAt: '2024-01-15', applications: 1, lastActive: '3 days ago' },
-  { id: '6', name: 'Emily Davis', email: 'emily@example.com', tier: 'premium', joinedAt: '2024-01-18', applications: 22, lastActive: '1 hour ago' },
-  { id: '7', name: 'Chris Lee', email: 'chris@example.com', tier: 'free', joinedAt: '2024-01-20', applications: 0, lastActive: 'Just now' },
-  { id: '8', name: 'Lisa Chen', email: 'lisa@example.com', tier: 'premium', joinedAt: '2024-01-22', applications: 6, lastActive: '4 hours ago' },
-];
-
 interface UserData {
   id: string;
   name: string;
   email: string;
+  phone?: string;
   tier: string;
   joinedAt: string;
   applications: number;
@@ -95,7 +84,7 @@ export default function AdminUsers() {
         });
         
         if (!response.ok) {
-          throw new Error('Failed to fetch user stats');
+          throw new Error(`Failed to fetch user stats: ${response.statusText}`);
         }
         
         const data: UserStatsData = await response.json();
@@ -103,24 +92,16 @@ export default function AdminUsers() {
       } catch (err) {
         console.error('Error fetching user stats:', err);
         setError(err instanceof Error ? err.message : 'Failed to load data');
-        // Fall back to mock data on error
-        setStats({
-          stats: {
-            totalUsers: 0,
-            premiumUsers: 0,
-            freeUsers: 0,
-            applicationsToday: 0,
-            conversionRate: 0,
-          },
-          recentUsers: mockUsers,
-          growthData: [],
-        });
+        setStats(null);
       } finally {
         setLoading(false);
       }
     };
 
     fetchUserStats();
+    // Refresh data every 30 seconds for real-time updates
+    const interval = setInterval(fetchUserStats, 30000);
+    return () => clearInterval(interval);
   }, []);
 
   const displayStats = stats?.stats || {
@@ -131,7 +112,7 @@ export default function AdminUsers() {
     conversionRate: 0,
   };
 
-  const displayUsers = stats?.recentUsers || mockUsers;
+  const displayUsers = stats?.recentUsers || [];
   const displayGrowthData = stats?.growthData || [];
 
   const filteredUsers = displayUsers.filter(
@@ -159,7 +140,24 @@ export default function AdminUsers() {
         </Button>
       </div>
 
-      {/* Stats Cards */}
+      {/* Error State */}
+      {error && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
+          <p><strong>Error:</strong> {error}</p>
+          <p className="text-sm mt-1">Please ensure you are logged in as an admin.</p>
+        </div>
+      )}
+
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center min-h-[400px]">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+
+      {!loading && (
+        <>
+          {/* Stats Cards */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         <Card>
           <CardContent className="p-4">
@@ -322,6 +320,7 @@ export default function AdminUsers() {
                 <TableRow>
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
+                  <TableHead>Phone</TableHead>
                   <TableHead>Tier</TableHead>
                   <TableHead>Joined</TableHead>
                   <TableHead>Applications</TableHead>
@@ -333,6 +332,7 @@ export default function AdminUsers() {
                   <TableRow key={user.id}>
                     <TableCell className="font-medium">{user.name}</TableCell>
                     <TableCell>{user.email}</TableCell>
+                    <TableCell className="text-muted-foreground">{user.phone || '-'}</TableCell>
                     <TableCell>
                       <Badge className={tierColors[user.tier]}>
                         <span className="mr-1">{tierIcons[user.tier]}</span>
@@ -349,6 +349,8 @@ export default function AdminUsers() {
           </div>
         </CardContent>
       </Card>
+        </>
+      )}
     </div>
   );
 }

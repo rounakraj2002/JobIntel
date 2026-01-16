@@ -54,7 +54,7 @@ export async function getVisitorAnalytics(req: Request, res: Response) {
       { $project: { page: "$_id", count: 1, _id: 0 } },
     ]);
 
-    // Hourly data for chart
+    // Hourly data for chart - aggregate visitors, pageviews, and clicks
     const hourlyData = await PageView.aggregate([
       { $match: { timestamp: { $gte: startDate } } },
       {
@@ -62,18 +62,42 @@ export async function getVisitorAnalytics(req: Request, res: Response) {
           _id: {
             $dateToString: { format: "%Y-%m-%d %H:00", date: "$timestamp" },
           },
-          views: { $sum: 1 },
+          pageViews: { $sum: 1 },
         },
       },
       { $sort: { _id: 1 } },
-      { $project: { time: "$_id", views: 1, _id: 0 } },
+      { $project: { hour: "$_id", pageViews: 1, _id: 0 } },
     ]);
+
+    // Get visitor and click counts per hour
+    const visitorHourlyData = await Visitor.aggregate([
+      { $match: { lastVisit: { $gte: startDate } } },
+      {
+        $group: {
+          _id: {
+            $dateToString: { format: "%Y-%m-%d %H:00", date: "$lastVisit" },
+          },
+          visitors: { $sum: 1 },
+          clicks: { $sum: "$clickCount" },
+        },
+      },
+      { $sort: { _id: 1 } },
+    ]);
+
+    // Merge hourly data from visitors into pageviews
+    const visitorMap = new Map(visitorHourlyData.map((v: any) => [v._id, { visitors: v.visitors, clicks: v.clicks }]));
+    const mergedHourlyData = hourlyData.map((h: any) => ({
+      hour: h.hour,
+      pageViews: h.pageViews,
+      visitors: visitorMap.get(h.hour)?.visitors || 0,
+      clicks: visitorMap.get(h.hour)?.clicks || 0,
+    }));
 
     // Recent visitors
     const recentVisitors = await Visitor.find({ lastVisit: { $gte: startDate } })
       .sort({ lastVisit: -1 })
       .limit(20)
-      .select("sessionId userId pageCount clickCount lastVisit pages")
+      .select("sessionId userId ipAddress pageCount clickCount lastVisit pages")
       .lean();
 
     return res.json({
@@ -86,7 +110,7 @@ export async function getVisitorAnalytics(req: Request, res: Response) {
         avgClicksPerVisitor: totalVisitors > 0 ? (clickCount / totalVisitors).toFixed(2) : 0,
       },
       topPages,
-      hourlyData,
+      hourlyData: mergedHourlyData,
       recentVisitors,
       timeRange,
     });

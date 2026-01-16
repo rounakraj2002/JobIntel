@@ -74,7 +74,7 @@ export async function getUserStats(_req: Request, res: Response) {
 
     // Get recent users (last 20)
     const recentUsers = await User.find()
-      .select('email name tier createdAt')
+      .select('email name phone tier createdAt')
       .sort({ createdAt: -1 })
       .limit(20)
       .lean() as Array<any>;
@@ -108,6 +108,7 @@ export async function getUserStats(_req: Request, res: Response) {
       id: user._id?.toString(),
       name: user.name || 'Unknown',
       email: user.email,
+      phone: user.phone || undefined,
       tier: user.tier || 'free',
       joinedAt: new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' }),
       applications: appCountMap.get(user._id?.toString()) || 0,

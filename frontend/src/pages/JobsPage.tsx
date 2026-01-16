@@ -5,6 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
+import { useAnalytics } from '@/hooks/useAnalytics';
 import {
   Select,
   SelectContent,
@@ -38,6 +39,7 @@ const JobsPage = () => {
   const navigate = useNavigate();
   const { user, isAuthenticated } = useAuthStore();
   const { publishedJobs } = useJobsStore();
+  const { trackClick } = useAnalytics();
   
   const [backendJobs, setBackendJobs] = useState<any[]>([]);
   const [hasBackendLoaded, setHasBackendLoaded] = useState(false);
@@ -659,7 +661,7 @@ const JobsPage = () => {
                         </Button>
                       )}
                       {isAuthenticated ? (
-                        <Link to={`/jobs/${job.id}`}>
+                        <Link to={`/jobs/${job.id}`} onClick={() => trackClick('view_details', { jobId: job.id, jobTitle: job.title })}>
                           <Button variant="outline" size="sm" className="text-xs sm:text-sm">
                             View Details
                             <ChevronRight className="h-4 w-4 ml-1 hidden sm:inline" />
@@ -671,6 +673,7 @@ const JobsPage = () => {
                           size="sm"
                           className="text-xs sm:text-sm"
                           onClick={() => {
+                            trackClick('view_details', { jobId: job.id, jobTitle: job.title });
                             setSelectedJobForAuth({ id: job.id, title: job.title });
                             setAuthModalOpen(true);
                           }}
@@ -682,7 +685,7 @@ const JobsPage = () => {
                       {!userApplications[job.id] ? (
                         <>
                           {isAuthenticated ? (
-                            <a href={job.applyLink} target="_blank" rel="noopener noreferrer">
+                            <a href={job.applyLink} target="_blank" rel="noopener noreferrer" onClick={() => trackClick('apply_job', { jobId: job.id, jobTitle: job.title })}>
                               <Button variant="accent" size="sm" className="text-xs sm:text-sm">
                                 Apply Now
                                 <ExternalLink className="h-4 w-4 ml-1 hidden sm:inline" />
@@ -708,6 +711,7 @@ const JobsPage = () => {
                               size="sm"
                               className="text-xs sm:text-sm"
                               onClick={async () => {
+                                trackClick('apply_job_authenticated', { jobId: job.id, jobTitle: job.title });
                                 try {
                                   const base = backendBase ? backendBase.replace(/\/$/, '') : '';
                                   const url = base ? `${base}/api/applications` : '/api/applications';
